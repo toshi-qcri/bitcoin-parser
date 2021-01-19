@@ -9,13 +9,26 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-      - name: Push to Docker Hub
-        uses: docker/build-push-action@v1
+      - name: Fetch release information
+        id: fetch_release_info
+        run: |
+          versionName=`sed '1q;d' release_version.txt | cut -d "=" -f2 | xargs`
+          echo "::set-output name=version::$versionName"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: toshiqcri/toshi-bitcoin-parser
-          tag_with_ref: true
+      - name: Push to Docker Hub
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          tags: "toshiqcri/toshi-bitcoin-parser:${{ steps.fetch_release_info.outputs.version }}"
+          push: true
   publish_helm_charts:
     name: Publish Helm Charts
     runs-on: ubuntu-latest
@@ -28,8 +41,8 @@ jobs:
       - name: Run chart-releaser
         uses: stefanprodan/helm-gh-pages@master
         with:
-          charts_url: https://toshi-qcri.github.io/toshi-helm-charts
-          repository: toshi-helm-charts
+          charts_url: https://toshi-qcri.github.io/helm-charts
+          repository: helm-charts
           branch: master
           charts_dir: charts
           commit_username: "GitHub Actions"
@@ -48,7 +61,6 @@ jobs:
         id: setup_release_info
         run: |
           versionName=`sed '1q;d' release_version.txt | cut -d "=" -f2 | xargs`
-          export VERSION_NAME=$versionName
           echo "::set-output name=version::$versionName"
       - name: Extract release notes
         id: extract_release_notes
