@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: toshi-bitcoin-parser-pv-claim
+spec:
+  storageClassName: {{ .Values.bitcoin.storage.className }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.bitcoin.storage.size }}

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: toshi-bitcoin-parser-deployment
+  labels:
+    app: toshi-bitcoin-parser
+    tier: bitcoin
+spec:
+  replicas:
+  selector:
+    matchLabels:
+      app: toshi-bitcoin-parser
+      tier: bitcoin
+  template:
+    metadata:
+      labels:
+        app: toshi-bitcoin-parser
+        tier: bitcoin
+    spec:
+      {{- if and .Values.bitcoin.nodeSelector.key .Values.bitcoin.nodeSelector.value }}
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: {{ .Values.bitcoin.nodeSelector.key }}
+                    operator: In
+                    values:
+                      - {{ .Values.bitcoin.nodeSelector.value }}
+      {{- end }}
+      volumes:
+        - name: toshi-bitcoin-parser-pv-storage
+          persistentVolumeClaim:
+            claimName: toshi-bitcoin-parser-pv-claim
+      containers:
+        - name: bitcoin-core
+          image: "{{ .Values.bitcoin.image.name }}:{{ .Values.bitcoin.image.tag }}"
+          imagePullPolicy: {{ .Values.bitcoin.image.pullPolicy }}
+          volumeMounts:
+            - name: toshi-bitcoin-parser-pv-storage
+              mountPath: {{ .Values.bitcoin.image.volume.mountPath }}
+          env:
+            - name: MOUNT_PATH
+              value: {{ .Values.bitcoin.image.volume.mountPath }}
+            - name: RABBITMQ_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bitcoin.rabbitmq.token }}
+                  key: token
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bitcoin.rabbitmq.password }}
+                  key: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: toshi-bitcoin-parser-service
+  labels:
+    tier: bitcoin
+spec:
+  selector:
+    app: toshi-bitcoin-parser-app
+    tier: bitcoin
+  ports:
+    - targetPort: {{ .Values.bitcoin.service.targetPort }}
+      port: {{ .Values.bitcoin.service.port }}
+      protocol: TCP

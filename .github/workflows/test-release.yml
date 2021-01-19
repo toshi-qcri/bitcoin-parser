@@ -1,0 +1,49 @@
+name: Test Release
+on:
+  push:
+    branches: [ develop ]
+jobs:
+  push_to_registry:
+    name: Push Docker image to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Push to Docker Hub
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          tags: toshiqcri/toshi-bitcoin-parser:0.0.0
+          push: true
+  publish_helm_charts:
+    name: Publish Helm Charts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Modify helm chart version
+        run: sed -i "s/version:.*/version:\ 0.0.0/g" charts/toshi-bitcoin-parser/Chart.yaml
+      - name: Modify docker image version
+        run: sed -i "s/tag:.*/tag:\ \"0.0.0\"/g" charts/toshi-bitcoin-parser/values.yaml
+      - name: Install Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.4.0
+      - name: Run chart-releaser
+        uses: stefanprodan/helm-gh-pages@master
+        with:
+          charts_url: https://toshi-qcri.github.io/helm-charts-test
+          repository: helm-charts-test
+          branch: main
+          charts_dir: charts
+          commit_username: "GitHub Actions"
+          commit_email: noreply@github.com
+          token: ${{ secrets.TOSHI_BOT_TOKEN }}

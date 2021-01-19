@@ -1,0 +1,66 @@
+name: Release
+on:
+  push:
+    branches: [ main ]
+jobs:
+  push_to_registry:
+    name: Push Docker image to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Push to Docker Hub
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: toshiqcri/toshi-bitcoin-parser
+          tag_with_ref: true
+  publish_helm_charts:
+    name: Publish Helm Charts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.4.0
+      - name: Run chart-releaser
+        uses: stefanprodan/helm-gh-pages@master
+        with:
+          charts_url: https://toshi-qcri.github.io/toshi-helm-charts
+          repository: toshi-helm-charts
+          branch: master
+          charts_dir: charts
+          commit_username: "GitHub Actions"
+          commit_email: noreply@github.com
+          token: ${{ secrets.TOSHI_BOT_TOKEN }}
+  tag_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Initialize mandatory git config
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email noreply@github.com
+      - name: Setup release information
+        id: setup_release_info
+        run: |
+          versionName=`sed '1q;d' release_version.txt | cut -d "=" -f2 | xargs`
+          export VERSION_NAME=$versionName
+          echo "::set-output name=version::$versionName"
+      - name: Extract release notes
+        id: extract_release_notes
+        uses: ffurrer2/extract-release-notes@v1
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.setup_release_info.outputs.version }}
+          release_name: v${{ steps.setup_release_info.outputs.version }}
+          body: ${{ steps.extract_release_notes.outputs.release_notes }}
+          draft: false
+          prerelease: false
