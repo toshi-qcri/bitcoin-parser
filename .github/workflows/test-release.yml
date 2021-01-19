@@ -9,6 +9,8 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
+        with:
+          ref: develop
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -29,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: develop
       - name: Modify helm chart version
         run: sed -i "s/version:.*/version:\ 0.0.0/g" charts/toshi-bitcoin-parser/Chart.yaml
       - name: Modify docker image version
