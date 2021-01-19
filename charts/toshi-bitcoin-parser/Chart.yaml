@@ -2,4 +2,4 @@
 apiVersion: v1
 description: The Helm chart for the Toshi bitcoin parser
 name: toshi-bitcoin-parser
-version: 0.1.32
+version: 0.1.2
